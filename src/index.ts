@@ -7,7 +7,7 @@
  */
 
 import app from "./app";
-import { getLogFilePath } from "./logger";
+import { getStoreInfo } from "./store";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
@@ -16,7 +16,7 @@ if (!process.env.VERCEL) {
     // eslint-disable-next-line no-console
     console.log(`access-logger listening on http://localhost:${PORT}`);
     // eslint-disable-next-line no-console
-    console.log(`writing access entries to ${getLogFilePath()}`);
+    console.log(`storage backend: ${getStoreInfo()}`);
   });
 }
 

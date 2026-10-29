@@ -9,8 +9,8 @@
 
 import express, { Request, Response } from "express";
 import cors from "cors";
-import path from "path";
-import { appendEntry, readEntries, AccessEntry } from "./logger";
+import { appendEntry, readEntries, AccessEntry } from "./store";
+import { DASHBOARD_HTML } from "./dashboard";
 
 export interface UAInfo {
   browser: string;
@@ -82,7 +82,7 @@ export function createApp() {
   app.use(cors());
   app.use(express.json());
 
-  app.get("/track", (req: Request, res: Response) => {
+  app.get("/track", async (req: Request, res: Response) => {
     const ua = req.headers["user-agent"] ?? "";
     const { ip, forwardedChain } = extractIp(req);
     const { browser, os } = parseUserAgent(ua);
@@ -98,7 +98,7 @@ export function createApp() {
       referer: (req.headers["referer"] as string) ?? null,
     };
 
-    appendEntry(entry);
+    await appendEntry(entry);
 
     if (req.query.debug === "1") {
       res.json(entry);
@@ -115,17 +115,20 @@ export function createApp() {
   });
 
   // Dashboard API (id 8): read back logged entries, newest first.
-  app.get("/api/logs", (req: Request, res: Response) => {
+  app.get("/api/logs", async (req: Request, res: Response) => {
     const limit = req.query.limit ? Number(req.query.limit) : 200;
     const ip = typeof req.query.ip === "string" ? req.query.ip : undefined;
     const since =
       typeof req.query.since === "string" ? req.query.since : undefined;
 
-    const entries = readEntries({ limit, ip, since });
+    const entries = await readEntries({ limit, ip, since });
     res.json({ count: entries.length, entries });
   });
 
-  app.use("/dashboard", express.static(path.resolve(process.cwd(), "public")));
+  // Dashboard page, served inline so it works on Vercel too.
+  app.get("/dashboard", (_req: Request, res: Response) => {
+    res.type("html").send(DASHBOARD_HTML);
+  });
 
   app.get("/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "access-logger", phase: 4 });

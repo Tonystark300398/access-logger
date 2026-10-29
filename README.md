@@ -74,4 +74,17 @@ Dùng test runner tích hợp của Node (`node:test`) + `supertest`, chạy qua
 2. Trên Render: **New → Blueprint**, trỏ vào repo này (Render tự đọc `render.yaml`).
 3. Blueprint đã cấu hình `build`/`start`, health check `/health`, `TRUST_PROXY=1`, và một **disk 1GB** mount vào `/var/data` với `LOG_DIR=/var/data/logs` để log không mất khi restart.
 
-**Vercel** — lưu ý: Vercel chạy serverless, **không có filesystem ghi được bền vững**, nên cách ghi `access.log` ra file sẽ không dùng được như trên Render (log sẽ mất sau mỗi lần cold start). Nếu bắt buộc dùng Vercel, cần chuyển phần lưu trữ sang dịch vụ ngoài (ví dụ Postgres/Redis managed, hoặc một bucket) — đây cũng là lý do tốt để nâng cấp sang SQLite/DB nếu dự án đi theo hướng serverless.
+**Vercel + Upstash Redis** — Vercel chạy serverless không ghi file bền vững, nên dùng Upstash Redis (free tier) làm nơi lưu log. App tự chọn backend: có biến môi trường Upstash → dùng Redis; không có → ghi file (`logs/access.log`) cho local/Render.
+
+1. Tạo một database tại [upstash.com](https://upstash.com) (Redis, Global). Cách nhanh nhất: trên Vercel vào tab **Storage → Marketplace → Upstash**, nó tự thêm biến môi trường cho project.
+2. Nếu tạo thủ công, copy **REST URL** và **REST Token** rồi thêm vào Vercel (**Settings → Environment Variables**):
+
+| Biến | Giá trị |
+|------|---------|
+| `UPSTASH_REDIS_REST_URL` | REST URL từ Upstash |
+| `UPSTASH_REDIS_REST_TOKEN` | REST Token từ Upstash |
+| `TRUST_PROXY` | `1` |
+
+3. Redeploy. Lúc này `/dashboard` trên Vercel sẽ lưu và hiển thị log bền vững (giữ tối đa 5000 bản ghi gần nhất).
+
+> Deploy trên Vercel: dự án theo chuẩn Express preset (zero-config) — `src/index.ts` export app, không cần `vercel.json` hay thư mục `api/`.
