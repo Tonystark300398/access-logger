@@ -1,0 +1,27 @@
+# Render.com deployment (id 10)
+# A persistent web service is the right fit: it keeps a long-running process
+# and a writable disk, so file-based logging (logs/access.log) survives.
+#
+# Deploy: push this repo to GitHub, then in Render choose
+#   New > Blueprint  and point it at this repo (it reads render.yaml).
+services:
+  - type: web
+    name: access-logger
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: TRUST_PROXY
+        # Render sits one proxy in front of your app.
+        value: "1"
+      - key: LOG_DIR
+        # Point logs at the mounted disk below so they persist across restarts.
+        value: "/var/data/logs"
+    disk:
+      name: logs
+      mountPath: /var/data
+      sizeGB: 1

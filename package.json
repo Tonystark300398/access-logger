@@ -1,0 +1,36 @@
+{
+  "name": "access-logger",
+  "version": "0.1.0",
+  "description": "Self-hosted request/access logging and analytics for your own website or server. Records visitor IP, device and timestamp for your own infrastructure, with a visible notice to visitors.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "test": "tsx --test test/api.test.ts"
+  },
+  "keywords": [
+    "access-log",
+    "analytics",
+    "express",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=18.19.0"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.16.2",
+    "typescript": "^5.4.5"
+  }
+}
