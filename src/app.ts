@@ -141,3 +141,7 @@ export function createApp() {
 
   return app;
 }
+
+// Default export: a ready-to-serve Express app. Vercel's Express runtime
+// detects and uses this; app.listen() happens in index.ts for local runs.
+export default createApp();

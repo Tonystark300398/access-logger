@@ -9,9 +9,15 @@
 import fs from "fs";
 import path from "path";
 
+// On Vercel the only writable location is /tmp (and it is wiped between cold
+// starts). Elsewhere (local, Render with a disk) we use ./logs.
+const DEFAULT_LOG_DIR = process.env.VERCEL
+  ? "/tmp/logs"
+  : path.resolve(process.cwd(), "logs");
+
 const LOG_DIR = process.env.LOG_DIR
   ? path.resolve(process.env.LOG_DIR)
-  : path.resolve(process.cwd(), "logs");
+  : DEFAULT_LOG_DIR;
 
 const LOG_FILE = path.join(LOG_DIR, "access.log");
 
