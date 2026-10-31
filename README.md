@@ -1,90 +1,153 @@
-# 🛡️ Access Logger Tool (`access-logger`)
+# 🛡️ Access Logger (`access-logger`)
 
-Công cụ ghi nhận và phân tích log truy cập cho **chính website/server của bạn**: lưu lại địa chỉ IP, thông tin thiết bị (User-Agent → trình duyệt, hệ điều hành) và thời gian của mỗi request gửi tới endpoint ghi log. Dùng cho mục đích analytics, giám sát bảo mật và chống lạm dụng trên hạ tầng bạn sở hữu, với lưu ý rằng khách truy cập cần được thông báo về việc thu thập này.
+A lightweight, self-hosted request/access logger and analytics dashboard for **your own website or server**. It records the IP, device (browser / OS parsed from the User-Agent), timestamp and an approximate (city-level) location for each request that hits its tracking endpoint — for analytics, rate-limiting and security monitoring on infrastructure you control.
 
----
-
-## 🚀 Mục tiêu dự án
-* Xây dựng một lightweight server bằng Node.js / Express + TypeScript.
-* Thu thập thông tin cơ bản của request (IP, Browser, OS, Timestamp) trên site của chính mình.
-* Lưu trữ log vào tệp cục bộ hoặc cơ sở dữ liệu nhẹ (SQLite).
-* Tích hợp Markdown Checklist để dễ theo dõi tiến độ phát triển.
+> **Scope & ethics.** This tool is meant to log traffic to sites and servers **you own**, and visitors should be informed that logging happens (a privacy notice / banner). It is **not** for sending disguised links to other people to covertly collect their location or identity. IP geolocation is approximate (city / ISP level) and does **not** identify an individual.
 
 ---
 
-## 📋 Tiến độ dự án (Task Checklist)
+## ✨ Features
 
-### Giai đoạn 1: Khởi tạo và Cấu hình Môi trường
-- [x] Khởi tạo dự án Node.js với TypeScript (`npm init` & `tsconfig.json`) <!-- id: 1 -->
-- [x] Cài đặt các thư viện cốt lõi (`express`, `@types/node`, `@types/express`, `cors`) <!-- id: 2 -->
-- [x] Thiết lập cấu trúc thư mục dự án chuẩn (`src/`, `logs/`) <!-- id: 3 -->
-
-### Giai đoạn 2: Phát triển tính năng cốt lõi (Core Logic)
-- [x] Viết API endpoint bắt request (`GET /track`) <!-- id: 4 -->
-- [x] Viết hàm trích xuất địa chỉ IP thực tế (xử lý qua Header `x-forwarded-for` và `req.ip`) <!-- id: 5 -->
-- [x] Thu thập thông tin thiết bị từ `User-Agent` (Trình duyệt, Hệ điều hành) <!-- id: 6 -->
-
-### Giai đoạn 3: Lưu trữ và Trực quan hóa Log
-- [x] Cấu hình ghi log ra tệp `access.log` hoặc lưu vào SQLite <!-- id: 7 -->
-- [x] Xây dựng giao diện dashboard đơn giản hoặc API xem lại danh sách log đã ghi <!-- id: 8 -->
-
-### Giai đoạn 4: Kiểm thử và Triển khai
-- [x] Viết kịch bản test thử nghiệm trên môi trường local <!-- id: 9 -->
-- [x] Triển khai lên cloud hosting miễn phí (như Render hoặc Vercel nếu hỗ trợ serverless) <!-- id: 10 -->
+- `GET /track` endpoint that records each request and returns a 1×1 GIF beacon (or JSON with `?debug=1`).
+- Accurate client-IP extraction, handling the `x-forwarded-for` header and `req.ip` behind proxies.
+- Browser & OS detection from the `User-Agent` (no external dependency).
+- Approximate, city-level IP geolocation with a Google Maps link to the estimated area.
+- Simple web dashboard to review, filter and auto-refresh logs — timestamps shown in **Vietnam time (UTC+7)**.
+- Pluggable storage: local file (`logs/access.log`) for local/Render, or **Upstash Redis** for serverless (Vercel).
 
 ---
 
-## ⚙️ Cách chạy
+## 🧱 Tech stack
+
+Node.js · TypeScript · Express · Upstash Redis (optional) · deployable to Render or Vercel.
+
+---
+
+## 📁 Project structure
+
+```
+IP Trap/
+├─ src/
+│  ├─ index.ts      # entry point (listens locally; exports app for Vercel)
+│  ├─ app.ts        # Express app, routes, UA/IP parsing
+│  ├─ store.ts      # storage abstraction (Redis or file)
+│  ├─ logger.ts     # file backend (logs/access.log, JSON Lines)
+│  ├─ geo.ts        # approximate IP geolocation (ipwho.is)
+│  └─ dashboard.ts  # dashboard HTML (served inline)
+├─ public/          # static copy of the dashboard (local use)
+├─ test/
+│  └─ api.test.ts   # local tests (node:test + supertest)
+├─ logs/            # access.log is written here (file backend)
+├─ render.yaml      # Render Blueprint
+├─ tsconfig.json
+└─ package.json
+```
+
+---
+
+## ⚙️ Getting started
 
 ```bash
 npm install
-npm run dev        # chạy dev với ts-node-dev
-# hoặc
+npm run dev          # dev mode with ts-node-dev
+# or
 npm run build && npm start
 ```
 
-- Kiểm tra server: `http://localhost:3000/health`
-- Ghi log thử: `http://localhost:3000/track` (thêm `?debug=1` để xem entry dạng JSON)
-- Log được ghi vào `logs/access.log`, mỗi request một dòng JSON.
+- Health check: `http://localhost:3000/health`
+- Generate a log entry: `http://localhost:3000/track` (add `?debug=1` to see the parsed JSON)
+- Dashboard: `http://localhost:3000/dashboard`
 
-### Biến môi trường
-| Biến | Ý nghĩa | Mặc định |
-|------|---------|----------|
-| `PORT` | Cổng server | `3000` |
-| `TRUST_PROXY` | Số lớp reverse proxy đứng trước (để `req.ip` lấy đúng IP thật) | `1` |
-| `LOG_DIR` | Thư mục chứa file log | `./logs` |
+Log entries are written to `logs/access.log` (one JSON object per line) unless Upstash Redis is configured.
 
-> ⚠️ Lưu ý: một địa chỉ IP thô không định danh chắc chắn một cá nhân (VPN, NAT/CGNAT, IP động, proxy). Dữ liệu này phù hợp cho analytics và chống lạm dụng hơn là để khẳng định danh tính. Hãy thông báo cho khách truy cập về việc thu thập log (privacy notice).
+> At localhost the IP is `127.0.0.1` / `::1`, so geolocation is skipped — you only see real locations when deployed with real visitors.
+
+### Environment variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | `3000` |
+| `TRUST_PROXY` | Number of reverse proxies in front (so `req.ip` is correct) | `1` |
+| `LOG_DIR` | Directory for the log file (file backend) | `./logs` |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL (enables Redis backend) | — |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token | — |
+
+If both Upstash variables are present, the Redis backend is used; otherwise it falls back to the file backend.
 
 ---
 
-## 🧪 Kiểm thử (id 9)
+## 📡 Using the beacon
+
+Embed the tracking endpoint on your own pages so visits are recorded:
+
+```html
+<img src="https://your-deployment-url/track" width="1" height="1" alt="" />
+```
+
+Each visitor who loads your page creates one entry.
+
+---
+
+## 📊 Dashboard
+
+Open `/dashboard` to see a table of recent entries: time (Vietnam, UTC+7), IP, approximate region + ISP, a Google Maps link to the estimated area, browser, OS, path and User-Agent. You can filter by IP, limit rows and enable auto-refresh.
+
+Geolocation is **approximate** (city / ISP level, often off by kilometres, unreliable for mobile / CGNAT / VPN) and is not a street address or an identity.
+
+---
+
+## 🧪 Testing
 
 ```bash
 npm install
 npm test
 ```
 
-Dùng test runner tích hợp của Node (`node:test`) + `supertest`, chạy qua `tsx` (không cần build). Các test (`test/api.test.ts`) kiểm tra: `/health`, `/track?debug=1` (parse đúng IP từ `x-forwarded-for` và nhận diện Browser/OS), beacon GIF, `/api/logs` đọc lại được log vừa ghi và lọc theo IP. Test ghi log vào thư mục tạm nên **không đụng** vào `logs/access.log` thật. Yêu cầu Node ≥ 18.19.
+Uses Node's built-in test runner (`node:test`) with `supertest`, run via `tsx`. Tests cover `/health`, `/track?debug=1` (IP extraction + UA parsing), the GIF beacon, and `/api/logs` (read-back and IP filter). Tests write to a temporary directory, so they don't touch your real `logs/access.log`. Requires Node ≥ 18.19.
 
-## ☁️ Triển khai (id 10)
+---
 
-**Render (khuyến nghị)** — file `render.yaml` đã có sẵn:
-1. Push repo lên GitHub.
-2. Trên Render: **New → Blueprint**, trỏ vào repo này (Render tự đọc `render.yaml`).
-3. Blueprint đã cấu hình `build`/`start`, health check `/health`, `TRUST_PROXY=1`, và một **disk 1GB** mount vào `/var/data` với `LOG_DIR=/var/data/logs` để log không mất khi restart.
+## ☁️ Deployment
 
-**Vercel + Upstash Redis** — Vercel chạy serverless không ghi file bền vững, nên dùng Upstash Redis (free tier) làm nơi lưu log. App tự chọn backend: có biến môi trường Upstash → dùng Redis; không có → ghi file (`logs/access.log`) cho local/Render.
+### Render (recommended for the file backend + persistent dashboard)
 
-1. Tạo một database tại [upstash.com](https://upstash.com) (Redis, Global). Cách nhanh nhất: trên Vercel vào tab **Storage → Marketplace → Upstash**, nó tự thêm biến môi trường cho project.
-2. Nếu tạo thủ công, copy **REST URL** và **REST Token** rồi thêm vào Vercel (**Settings → Environment Variables**):
+A `render.yaml` Blueprint is included.
+1. Push this repo to GitHub.
+2. On Render: **New → Blueprint**, point it at this repo.
+3. It configures build/start, the `/health` check, `TRUST_PROXY=1`, and a 1 GB disk mounted at `/var/data` with `LOG_DIR=/var/data/logs` so logs persist across restarts.
 
-| Biến | Giá trị |
-|------|---------|
-| `UPSTASH_REDIS_REST_URL` | REST URL từ Upstash |
-| `UPSTASH_REDIS_REST_TOKEN` | REST Token từ Upstash |
-| `TRUST_PROXY` | `1` |
+### Vercel + Upstash Redis (serverless)
 
-3. Redeploy. Lúc này `/dashboard` trên Vercel sẽ lưu và hiển thị log bền vững (giữ tối đa 5000 bản ghi gần nhất).
+Vercel is serverless and has no persistent writable filesystem, so logs are stored in Upstash Redis.
+1. Import the repo at vercel.com (Express preset, zero-config — no `vercel.json` or `api/` folder needed).
+2. Add an Upstash Redis database: **Storage → Marketplace → Upstash**, connect it to the project (it auto-adds the env vars). Or add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` manually.
+3. Add `TRUST_PROXY=1`.
+4. Deploy. The dashboard then persists logs (keeps the most recent 5,000 entries).
 
-> Deploy trên Vercel: dự án theo chuẩn Express preset (zero-config) — `src/index.ts` export app, không cần `vercel.json` hay thư mục `api/`.
+---
+
+## 📋 Roadmap / Checklist
+
+### Phase 1 — Setup & environment
+- [x] Initialize a Node.js + TypeScript project (`npm init` & `tsconfig.json`) <!-- id: 1 -->
+- [x] Install core libraries (`express`, `@types/node`, `@types/express`, `cors`) <!-- id: 2 -->
+- [x] Set up a standard project structure (`src/`, `logs/`) <!-- id: 3 -->
+
+### Phase 2 — Core logic
+- [x] Request-capture endpoint (`GET /track`) <!-- id: 4 -->
+- [x] Real client-IP extraction (`x-forwarded-for` + `req.ip`) <!-- id: 5 -->
+- [x] Browser / OS detection from the `User-Agent` <!-- id: 6 -->
+
+### Phase 3 — Storage & visualization
+- [x] Write logs to `access.log` (or a store such as Redis) <!-- id: 7 -->
+- [x] Dashboard / API to review logged entries <!-- id: 8 -->
+
+### Phase 4 — Testing & deployment
+- [x] Local test suite <!-- id: 9 -->
+- [x] Deploy to free cloud hosting (Render / Vercel) <!-- id: 10 -->
+
+---
+
+## 📝 License
+
+MIT
