@@ -11,6 +11,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { appendEntry, readEntries, AccessEntry } from "./store";
 import { DASHBOARD_HTML } from "./dashboard";
+import { lookupGeo } from "./geo";
 
 export interface UAInfo {
   browser: string;
@@ -87,6 +88,9 @@ export function createApp() {
     const { ip, forwardedChain } = extractIp(req);
     const { browser, os } = parseUserAgent(ua);
 
+    // Best-effort approximate (city-level) geo. Never blocks logging on error.
+    const geo = await lookupGeo(ip);
+
     const entry: AccessEntry = {
       timestamp: new Date().toISOString(),
       ip,
@@ -96,6 +100,7 @@ export function createApp() {
       userAgent: ua,
       path: req.originalUrl,
       referer: (req.headers["referer"] as string) ?? null,
+      geo,
     };
 
     await appendEntry(entry);

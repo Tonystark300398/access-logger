@@ -28,6 +28,15 @@ function ensureLogDir(): void {
   }
 }
 
+export interface GeoInfo {
+  country?: string;
+  region?: string;
+  city?: string;
+  lat?: number;
+  lon?: number;
+  isp?: string;
+}
+
 export interface AccessEntry {
   timestamp: string;
   ip: string;
@@ -37,6 +46,8 @@ export interface AccessEntry {
   userAgent: string;
   path: string;
   referer: string | null;
+  // Approximate (city-level) geolocation. null/absent when unknown or private.
+  geo?: GeoInfo | null;
 }
 
 /**

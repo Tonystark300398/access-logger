@@ -54,17 +54,44 @@ export const DASHBOARD_HTML = `<!doctype html>
       </div>
       <table>
         <thead>
-          <tr><th>Thời gian</th><th>IP</th><th>Trình duyệt</th><th>Hệ điều hành</th><th>Path</th><th>User-Agent</th></tr>
+          <tr><th>Thời gian (VN)</th><th>IP</th><th>Khu vực (gần đúng)</th><th>Bản đồ</th><th>Trình duyệt</th><th>Hệ điều hành</th><th>Path</th><th>User-Agent</th></tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
       <div id="empty" class="empty" style="display: none">Chưa có log nào. Thử truy cập <span class="mono">/track</span> vài lần.</div>
-      <p class="note">Dashboard này đọc log của chính server bạn. Dữ liệu IP chỉ mang tính tham khảo cho analytics/bảo mật và không định danh chắc chắn một cá nhân.</p>
+      <p class="note">Thời gian hiển thị theo giờ Việt Nam (UTC+7). Vị trí là <b>khu vực gần đúng</b> ở mức thành phố/ISP (có thể lệch vài km đến vài chục km, đặc biệt với mạng di động/VPN) — <b>không phải địa chỉ chính xác</b> và không định danh một cá nhân. Link bản đồ chỉ trỏ tới khu vực ước lượng, dùng cho analytics/bảo mật trên site của chính bạn.</p>
     </main>
     <script>
       const $ = (id) => document.getElementById(id);
       let timer = null;
       function esc(s){return String(s==null?"":s).replace(/[&<>]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+      // Format an ISO timestamp in Vietnam time (Asia/Ho_Chi_Minh, UTC+7).
+      function fmtVN(iso){
+        try {
+          return new Intl.DateTimeFormat("vi-VN",{ timeZone:"Asia/Ho_Chi_Minh", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false }).format(new Date(iso));
+        } catch(e){ return iso; }
+      }
+      function fmtVNTime(iso){
+        try {
+          return new Intl.DateTimeFormat("vi-VN",{ timeZone:"Asia/Ho_Chi_Minh", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false }).format(new Date(iso));
+        } catch(e){ return ""; }
+      }
+      function geoText(g){
+        if(!g) return "—";
+        const parts = [g.city, g.region, g.country].filter(Boolean);
+        return parts.length ? parts.join(", ") : "—";
+      }
+      function mapLink(g){
+        if(!g) return "—";
+        if(typeof g.lat==="number" && typeof g.lon==="number"){
+          return '<a href="https://www.google.com/maps?q=' + g.lat + ',' + g.lon + '" target="_blank" rel="noopener">Xem khu vực</a>';
+        }
+        const parts = [g.city, g.region, g.country].filter(Boolean).join(", ");
+        if(parts){
+          return '<a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(parts) + '" target="_blank" rel="noopener">Xem khu vực</a>';
+        }
+        return "—";
+      }
       async function load(){
         const ip = $("ip").value.trim();
         const limit = $("limit").value || 200;
@@ -82,10 +109,14 @@ export const DASHBOARD_HTML = `<!doctype html>
         const ips = new Set();
         for (const e of entries){
           ips.add(e.ip);
+          const g = e.geo;
+          const ispLine = g && g.isp ? '<div class="muted" style="font-size:11px">' + esc(g.isp) + "</div>" : "";
           const tr = document.createElement("tr");
           tr.innerHTML =
-            '<td class="mono">' + esc(e.timestamp) + "</td>" +
+            '<td class="mono">' + esc(fmtVN(e.timestamp)) + "</td>" +
             '<td class="mono">' + esc(e.ip) + "</td>" +
+            "<td>" + esc(geoText(g)) + ispLine + "</td>" +
+            "<td>" + mapLink(g) + "</td>" +
             "<td>" + esc(e.browser) + "</td>" +
             "<td>" + esc(e.os) + "</td>" +
             '<td class="mono">' + esc(e.path) + "</td>" +
@@ -94,7 +125,7 @@ export const DASHBOARD_HTML = `<!doctype html>
         }
         $("s-count").textContent = entries.length;
         $("s-ips").textContent = ips.size;
-        $("s-last").textContent = entries.length ? String(entries[0].timestamp).slice(11,19) : "—";
+        $("s-last").textContent = entries.length ? fmtVNTime(entries[0].timestamp) : "—";
       }
       $("refresh").addEventListener("click", load);
       $("ip").addEventListener("keydown", (e)=>{ if(e.key==="Enter") load(); });
