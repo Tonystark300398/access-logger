@@ -3,7 +3,7 @@
  * without relying on static-file bundling of the /public folder.
  */
 export const DASHBOARD_HTML = `<!doctype html>
-<html lang="vi">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -38,28 +38,28 @@ export const DASHBOARD_HTML = `<!doctype html>
   <body>
     <header>
       <h1>🛡️ Access Logger</h1>
-      <span class="muted">log truy cập cho site của bạn</span>
+      <span class="muted">access logs for your own site</span>
     </header>
     <main>
       <div class="controls">
-        <input id="ip" placeholder="Lọc theo IP (vd: 203.0)" />
-        <input id="limit" type="number" value="200" style="width: 90px" title="Số dòng tối đa" />
-        <button class="primary" id="refresh">Tải lại</button>
-        <label class="muted"><input type="checkbox" id="auto" /> Tự động 5s</label>
+        <input id="ip" placeholder="Filter by IP (e.g. 203.0)" />
+        <input id="limit" type="number" value="200" style="width: 90px" title="Max rows" />
+        <button class="primary" id="refresh">Reload</button>
+        <label class="muted"><input type="checkbox" id="auto" /> Auto 5s</label>
       </div>
       <div class="stats">
-        <div class="stat"><span class="muted">Tổng hiển thị</span><b id="s-count">0</b></div>
-        <div class="stat"><span class="muted">IP duy nhất</span><b id="s-ips">0</b></div>
-        <div class="stat"><span class="muted">Mới nhất</span><b id="s-last">—</b></div>
+        <div class="stat"><span class="muted">Showing</span><b id="s-count">0</b></div>
+        <div class="stat"><span class="muted">Unique IPs</span><b id="s-ips">0</b></div>
+        <div class="stat"><span class="muted">Latest</span><b id="s-last">—</b></div>
       </div>
       <table>
         <thead>
-          <tr><th>Thời gian (VN)</th><th>IP</th><th>Khu vực (gần đúng)</th><th>Bản đồ</th><th>Trình duyệt</th><th>Hệ điều hành</th><th>Path</th><th>User-Agent</th></tr>
+          <tr><th>Time (VN, UTC+7)</th><th>IP</th><th>Region (approx.)</th><th>Map</th><th>Browser</th><th>OS</th><th>Path</th><th>User-Agent</th></tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
-      <div id="empty" class="empty" style="display: none">Chưa có log nào. Thử truy cập <span class="mono">/track</span> vài lần.</div>
-      <p class="note">Thời gian hiển thị theo giờ Việt Nam (UTC+7). Vị trí là <b>khu vực gần đúng</b> ở mức thành phố/ISP (có thể lệch vài km đến vài chục km, đặc biệt với mạng di động/VPN) — <b>không phải địa chỉ chính xác</b> và không định danh một cá nhân. Link bản đồ chỉ trỏ tới khu vực ước lượng, dùng cho analytics/bảo mật trên site của chính bạn.</p>
+      <div id="empty" class="empty" style="display: none">No logs yet. Try hitting <span class="mono">/track</span> a few times.</div>
+      <p class="note">Times are shown in Vietnam time (UTC+7). Location is an <b>approximate area</b> at the city / ISP level (it can be off by a few to tens of kilometres, especially for mobile / VPN) — it is <b>not a precise address</b> and does not identify an individual. The map link only points to the estimated area, for analytics / security on your own site.</p>
     </main>
     <script>
       const $ = (id) => document.getElementById(id);
@@ -68,12 +68,12 @@ export const DASHBOARD_HTML = `<!doctype html>
       // Format an ISO timestamp in Vietnam time (Asia/Ho_Chi_Minh, UTC+7).
       function fmtVN(iso){
         try {
-          return new Intl.DateTimeFormat("vi-VN",{ timeZone:"Asia/Ho_Chi_Minh", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false }).format(new Date(iso));
+          return new Intl.DateTimeFormat("en-GB",{ timeZone:"Asia/Ho_Chi_Minh", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false }).format(new Date(iso));
         } catch(e){ return iso; }
       }
       function fmtVNTime(iso){
         try {
-          return new Intl.DateTimeFormat("vi-VN",{ timeZone:"Asia/Ho_Chi_Minh", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false }).format(new Date(iso));
+          return new Intl.DateTimeFormat("en-GB",{ timeZone:"Asia/Ho_Chi_Minh", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false }).format(new Date(iso));
         } catch(e){ return ""; }
       }
       function geoText(g){
@@ -84,11 +84,11 @@ export const DASHBOARD_HTML = `<!doctype html>
       function mapLink(g){
         if(!g) return "—";
         if(typeof g.lat==="number" && typeof g.lon==="number"){
-          return '<a href="https://www.google.com/maps?q=' + g.lat + ',' + g.lon + '" target="_blank" rel="noopener">Xem khu vực</a>';
+          return '<a href="https://www.google.com/maps?q=' + g.lat + ',' + g.lon + '" target="_blank" rel="noopener">View area</a>';
         }
         const parts = [g.city, g.region, g.country].filter(Boolean).join(", ");
         if(parts){
-          return '<a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(parts) + '" target="_blank" rel="noopener">Xem khu vực</a>';
+          return '<a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(parts) + '" target="_blank" rel="noopener">View area</a>';
         }
         return "—";
       }
