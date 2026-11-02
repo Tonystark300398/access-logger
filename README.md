@@ -45,6 +45,65 @@ IP Trap/
 
 ---
 
+## 🔀 How it works
+
+> GitHub renders the Mermaid diagrams below directly. PNG copies are in [`docs/`](docs/).
+
+### Request flow (flowchart)
+
+```mermaid
+flowchart TD
+    A["Visitor loads your page<br/>1x1 beacon: &lt;img src=/track&gt;"] -->|GET /track| B["Express /track"]
+    B --> C["Extract real client IP<br/>x-forwarded-for / req.ip"]
+    C --> D["Parse User-Agent<br/>Browser + OS"]
+    D --> E{"Public IP?"}
+    E -- "private / loopback" --> H["Build log entry"]
+    E -- "public" --> F["Approx. geo lookup<br/>ipwho.is"]
+    F --> H
+    H --> I["appendEntry"]
+    I --> J{"Upstash Redis<br/>configured?"}
+    J -- "yes" --> K[("Redis list<br/>LPUSH + LTRIM")]
+    J -- "no" --> L[("logs/access.log<br/>JSON Lines")]
+    I --> M{"debug=1 ?"}
+    M -- "yes" --> N["Respond JSON"]
+    M -- "no" --> O["Respond 1x1 GIF"]
+
+    P["Admin opens /dashboard"] --> Q["Dashboard page"]
+    Q -->|"GET /api/logs"| R["Read recent entries<br/>from store"]
+    R --> S["Render table<br/>VN time - region - map link"]
+```
+
+### Interaction order (sequence diagram)
+
+```mermaid
+sequenceDiagram
+    participant V as Visitor
+    participant S as Express server
+    participant G as ipwho.is (geo)
+    participant D as Store (Redis / file)
+    participant A as Admin (dashboard)
+
+    V->>S: GET /track (IP, User-Agent)
+    S->>S: Extract IP + parse Browser/OS
+    opt Public IP
+        S->>G: Lookup approximate location
+        G-->>S: City / region / country
+    end
+    S->>D: Append log entry
+    D-->>S: OK
+    S-->>V: 1x1 GIF (or JSON if debug=1)
+
+    Note over V,A: Later - reviewing the logs
+    A->>S: GET /dashboard
+    S-->>A: Dashboard HTML
+    A->>S: GET /api/logs
+    S->>D: Read recent entries
+    D-->>S: Entries (newest first)
+    S-->>A: JSON, then render table (VN time, map link)
+```
+
+---
+
 ## ⚙️ Getting started
 
 ```bash

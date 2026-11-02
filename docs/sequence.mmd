@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant V as Visitor
+    participant S as Express server
+    participant G as ipwho.is (geo)
+    participant D as Store (Redis / file)
+    participant A as Admin (dashboard)
+
+    V->>S: GET /track (IP, User-Agent)
+    S->>S: Extract IP + parse Browser/OS
+    opt Public IP
+        S->>G: Lookup approximate location
+        G-->>S: City / region / country
+    end
+    S->>D: Append log entry
+    D-->>S: OK
+    S-->>V: 1x1 GIF (or JSON if debug=1)
+
+    Note over V,A: Later - reviewing the logs
+    A->>S: GET /dashboard
+    S-->>A: Dashboard HTML
+    A->>S: GET /api/logs
+    S->>D: Read recent entries
+    D-->>S: Entries (newest first)
+    S-->>A: JSON, then render table (VN time, map link)
